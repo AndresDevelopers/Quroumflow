@@ -20,10 +20,12 @@ import type { Companionship, Member } from './types';
  * Sincroniza las asignaciones de ministración cuando se actualizan los ministrantes de un miembro
  * @param member - El miembro que ha sido actualizado
  * @param previousTeachers - Los ministrantes previos (para comparar cambios)
+ * @param barrioOrg - El barrioOrg del usuario actual
  */
 export async function syncMinisteringAssignments(
   member: Member, 
-  previousTeachers: string[] = []
+  previousTeachers: string[] = [],
+  barrioOrg: string
 ): Promise<void> {
   try {
     console.log('🔄 Syncing ministering assignments for:', {
@@ -41,7 +43,7 @@ export async function syncMinisteringAssignments(
     }
 
     // Obtener todos los compañerismos existentes
-    const companionshipsSnapshot = await getDocs(ministeringCollection);
+    const companionshipsSnapshot = await getDocs(query(ministeringCollection, where('barrioOrg', '==', barrioOrg)));
     const companionships = companionshipsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -56,7 +58,7 @@ export async function syncMinisteringAssignments(
 
     // Agregar al miembro a nuevos compañerismos si es necesario
     if (currentTeachers.length > 0) {
-      await addToNewCompanionships(companionships, memberFamilyName, currentTeachers, member.id);
+      await addToNewCompanionships(companionships, memberFamilyName, currentTeachers, member.id, barrioOrg);
     }
 
     console.log('✅ Ministering assignments synced successfully');
@@ -120,7 +122,8 @@ async function addToNewCompanionships(
   companionships: Companionship[],
   memberFamilyName: string,
   currentTeachers: string[],
-  memberId: string
+  memberId: string,
+  barrioOrg: string
 ): Promise<void> {
   console.log('➕ Adding to new companionships:', { memberFamilyName, currentTeachers });
 
@@ -157,6 +160,7 @@ async function addToNewCompanionships(
     
     const newCompanionship = {
       companions: currentTeachers,
+      barrioOrg,
       families: [{
         name: memberFamilyName,
         isUrgent: false,

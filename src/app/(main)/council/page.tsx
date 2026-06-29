@@ -293,7 +293,7 @@ function memberToConvertWithInfo(member: Member): ConvertWithInfo {
 }
 
 export default function CouncilPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const [councilConverts, setCouncilConverts] = useState<Member[]>([]);
   const [upcomingBaptisms, setUpcomingBaptisms] = useState<FutureMember[]>([]);
   const [urgentNeeds, setUrgentNeeds] = useState<UrgentFamily[]>([]);
@@ -322,11 +322,11 @@ export default function CouncilPage() {
         getUrgentNeeds(),
         getCouncilAnnotations(),
         getUpcomingServices(),
-        getLessActiveMembers(),
-        getUrgentMembers(),
+        getLessActiveMembers(barrioOrg),
+        getUrgentMembers(barrioOrg),
         getUpcomingActivities(),
-        getDocs(query(membersCollection, orderBy('firstName', 'asc'))),
-        getDeceasedMembers(),
+        getDocs(query(membersCollection, where('barrioOrg', '==', barrioOrg), orderBy('firstName', 'asc'))),
+        getDeceasedMembers(barrioOrg),
       ]);
       setCouncilConverts(converts);
       setUpcomingBaptisms(baptisms);
@@ -438,7 +438,7 @@ export default function CouncilPage() {
       await updateDoc(doc(membersCollection, memberId), { ministeringTeachers: teachers, updatedAt: Timestamp.now() });
       const member = availableMembers.find(m => m.id === memberId);
       if (member) {
-        await syncMinisteringAssignments({ ...member, ministeringTeachers: teachers }, previousTeachers);
+        await syncMinisteringAssignments({ ...member, ministeringTeachers: teachers }, previousTeachers, barrioOrg);
       }
       toast({ title: '✅ Maestros guardados', description: 'Los maestros ministrantes se actualizaron.' });
     } catch (error) {

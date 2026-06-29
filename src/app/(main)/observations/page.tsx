@@ -177,7 +177,7 @@ const renderPhoneWithAge = (member: Member, fallback: string = 'Sin teléfono') 
 
 export default function ObservationsPage() {
 
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
 
   const { toast } = useToast();
 
@@ -349,7 +349,7 @@ export default function ObservationsPage() {
 
     try {
 
-      const healthData = await fetchHealthConcerns();
+      const healthData = await fetchHealthConcerns(barrioOrg);
 
       setHealthConcerns(healthData);
 
@@ -734,7 +734,7 @@ export default function ObservationsPage() {
           helperNames,
 
           createdBy: user.uid,
-
+          barrioOrg,
           photoFile,
 
         });

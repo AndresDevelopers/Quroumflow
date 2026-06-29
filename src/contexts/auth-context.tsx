@@ -24,6 +24,9 @@ interface AuthContextType {
   userRole: UserRole | null;
   mainPage: string;
   userTheme: string;
+  barrio: string;
+  organizacion: string;
+  barrioOrg: string;
   refreshAuth: () => Promise<void>;
 }
 
@@ -43,6 +46,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [mainPage, setMainPage] = useState<string>('/');
   const [userTheme, setUserTheme] = useState<string>('system');
+  const [barrio, setBarrio] = useState<string>('');
+  const [organizacion, setOrganizacion] = useState<string>('');
+  const [barrioOrg, setBarrioOrg] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { setTheme } = useTheme();
 
@@ -55,6 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setFirebaseUser(null);
         setUserRole(null);
+        setBarrio('');
+        setOrganizacion('');
+        setBarrioOrg('');
       }
       setLoading(false);
     });
@@ -78,6 +87,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const data = userDoc.data();
         setUserRole(normalizeRole(data.role));
         setMainPage(data.mainPage || '/');
+
+        const barrioVal = data.barrio || 'Libertad';
+        const orgVal = data.organizacion || 'Quórum de Élderes';
+        setBarrio(barrioVal);
+        setOrganizacion(orgVal);
+        setBarrioOrg(`${barrioVal}|${orgVal}`);
 
         // Load and sync theme from Firestore
         const savedTheme = data.theme;
@@ -105,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const value = { user, loading, firebaseUser, userRole, mainPage, userTheme, refreshAuth };
+  const value = { user, loading, firebaseUser, userRole, mainPage, userTheme, barrio, organizacion, barrioOrg, refreshAuth };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
  * Ayuda a identificar problemas de configuración y permisos
  */
 export function FirebaseDebug() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const { toast } = useToast();
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<{
@@ -86,7 +86,7 @@ export function FirebaseDebug() {
         };
 
         console.log('🧪 Intentando crear miembro de prueba...');
-        const memberId = await createMember(testMemberData);
+        const memberId = await createMember(testMemberData, barrioOrg);
         
         if (memberId) {
           newResults.memberCreation = true;

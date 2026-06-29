@@ -3,12 +3,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth, firestore } from "@/lib/firebase";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
+import { doc, serverTimestamp, setDoc, getDocs } from "firebase/firestore";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
@@ -36,10 +37,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { useI18n } from "@/contexts/i18n-context";
-import { usersCollection } from "@/lib/collections";
+import { usersCollection, barriosCollection, organizacionesCollection } from "@/lib/collections";
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -47,6 +55,8 @@ const registerSchema = z.object({
   birthDate: z.date({
     required_error: "Date of birth is required.",
   }),
+  barrio: z.string().min(1, { message: "Barrio is required." }),
+  organizacion: z.string().min(1, { message: "Organización is required." }),
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." }),
@@ -61,6 +71,30 @@ export default function RegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useI18n();
+  const [barrios, setBarrios] = useState<string[]>([]);
+  const [organizaciones, setOrganizaciones] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [barriosSnap, orgsSnap] = await Promise.all([
+          getDocs(barriosCollection),
+          getDocs(organizacionesCollection),
+        ]);
+        const dbBarrios = barriosSnap.docs.map(d => d.data().name).filter(Boolean);
+        const dbOrgs = orgsSnap.docs.map(d => d.data().name).filter(Boolean);
+        if (!dbBarrios.includes("Libertad")) dbBarrios.unshift("Libertad");
+        if (!dbOrgs.includes("Quórum de Élderes")) dbOrgs.unshift("Quórum de Élderes");
+        setBarrios(dbBarrios);
+        setOrganizaciones(dbOrgs);
+      } catch (err) {
+        console.error("Error fetching barrios/organizaciones:", err);
+        setBarrios(["Libertad"]);
+        setOrganizaciones(["Quórum de Élderes"]);
+      }
+    };
+    fetchOptions();
+  }, []);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -69,6 +103,8 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
+      barrio: "Libertad",
+      organizacion: "Quórum de Élderes",
     },
   });
 
@@ -87,6 +123,9 @@ export default function RegisterPage() {
         name: values.name,
         email: values.email,
         birthDate: values.birthDate,
+        barrio: values.barrio,
+        organizacion: values.organizacion,
+        barrioOrg: `${values.barrio}|${values.organizacion}`,
         role: 'user',
         createdAt: serverTimestamp(),
       });
@@ -189,6 +228,50 @@ export default function RegisterPage() {
                       />
                     </PopoverContent>
                   </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="barrio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('register.barrioLabel')}</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('register.barrioPlaceholder')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {barrios.map((b) => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="organizacion"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('register.organizacionLabel')}</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('register.organizacionPlaceholder')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {organizaciones.map((o) => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

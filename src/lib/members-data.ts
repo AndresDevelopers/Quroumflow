@@ -57,7 +57,7 @@ export const normalizeMemberStatus = (status?: unknown): MemberStatus => {
 };
 
 // Create a new member
-export async function createMember(memberData: Omit<Member, 'id'>): Promise<string> {
+export async function createMember(memberData: Omit<Member, 'id'>, barrioOrg: string): Promise<string> {
   try {
     // Validate required fields
     if (!memberData.firstName || !memberData.lastName) {
@@ -76,6 +76,7 @@ export async function createMember(memberData: Omit<Member, 'id'>): Promise<stri
       createdAt: memberData.createdAt,
       updatedAt: memberData.updatedAt,
       createdBy: memberData.createdBy,
+      barrioOrg,
     };
 
     // Only add optional fields if they have valid values
@@ -277,7 +278,7 @@ export async function updateMember(
 }
 
 // Get less active members for council page
-export async function getLessActiveMembers(): Promise<Member[]> {
+export async function getLessActiveMembers(barrioOrg: string): Promise<Member[]> {
   try {
     // Get firestore instance
     const db = getFirestoreInstance();
@@ -285,6 +286,7 @@ export async function getLessActiveMembers(): Promise<Member[]> {
 
     const q = query(
       membersCollection,
+      where('barrioOrg', '==', barrioOrg),
       where('status', '==', 'less_active'),
       orderBy('lastName', 'asc')
     );
@@ -324,13 +326,14 @@ export async function getLessActiveMembers(): Promise<Member[]> {
 }
 
 // Get urgent members for council page
-export async function getUrgentMembers(): Promise<Member[]> {
+export async function getUrgentMembers(barrioOrg: string): Promise<Member[]> {
   try {
     const db = getFirestoreInstance();
     const membersCollection = collection(db, 'c_miembros');
 
     const q = query(
       membersCollection,
+      where('barrioOrg', '==', barrioOrg),
       where('isUrgent', '==', true)
     );
 
@@ -359,13 +362,14 @@ export async function getUrgentMembers(): Promise<Member[]> {
 // Returns members with status 'deceased' who either:
 // 1. Have incomplete ordinances (need temple work)
 // 2. Have all ordinances complete but within 7 days of completion
-export async function getDeceasedMembers(): Promise<Member[]> {
+export async function getDeceasedMembers(barrioOrg: string): Promise<Member[]> {
   try {
     const db = getFirestoreInstance();
     const membersCollection = collection(db, 'c_miembros');
 
     const q = query(
       membersCollection,
+      where('barrioOrg', '==', barrioOrg),
       where('status', '==', 'deceased')
     );
 
@@ -468,7 +472,7 @@ export async function deleteMember(memberId: string): Promise<void> {
 // Get members by status
 export async function getMembersByStatus(
   status?: MemberStatus,
-  options?: { includeDeceased?: boolean }
+  options?: { includeDeceased?: boolean; barrioOrg?: string }
 ): Promise<Member[]> {
   try {
     // Get firestore instance
@@ -476,6 +480,11 @@ export async function getMembersByStatus(
     const membersCollection = collection(db, 'c_miembros');
 
     const constraints: QueryConstraint[] = [];
+
+    // Add barrioOrg filter if provided
+    if (options?.barrioOrg) {
+      constraints.push(where('barrioOrg', '==', options.barrioOrg));
+    }
 
     // Add status filter if provided
     if (status) {
@@ -525,13 +534,18 @@ export async function getMembersByStatus(
 }
 
 // Get members for selector component
-export async function getMembersForSelector(includeInactive = false): Promise<Member[]> {
+export async function getMembersForSelector(includeInactive = false, barrioOrg?: string): Promise<Member[]> {
   try {
     // Get firestore instance
     const db = getFirestoreInstance();
     const membersCollection = collection(db, 'c_miembros');
 
     const constraints: QueryConstraint[] = [];
+
+    // Add barrioOrg filter if provided
+    if (barrioOrg) {
+      constraints.push(where('barrioOrg', '==', barrioOrg));
+    }
 
     // Filter by status if not including inactive members
     if (!includeInactive) {
@@ -707,7 +721,7 @@ export async function getMemberById(memberId: string): Promise<Member | null> {
 }
 
 // Search for members by exact first name and last name (case insensitive)
-export async function searchMembersByName(firstName: string, lastName: string): Promise<Member[]> {
+export async function searchMembersByName(firstName: string, lastName: string, barrioOrg?: string): Promise<Member[]> {
   try {
     // Get firestore instance
     const db = getFirestoreInstance();
@@ -717,18 +731,20 @@ export async function searchMembersByName(firstName: string, lastName: string): 
       return [];
     }
 
-    // Create queries for both possible name combinations (firstName + lastName and lastName + firstName)
-    const q1 = query(
-      membersCollection,
+    const constraints1: QueryConstraint[] = [
       where('firstName', '==', firstName.trim()),
-      where('lastName', '==', lastName.trim())
-    );
+      where('lastName', '==', lastName.trim()),
+    ];
+    if (barrioOrg) constraints1.splice(0, 0, where('barrioOrg', '==', barrioOrg));
 
-    const q2 = query(
-      membersCollection,
+    const constraints2: QueryConstraint[] = [
       where('firstName', '==', lastName.trim()),
-      where('lastName', '==', firstName.trim())
-    );
+      where('lastName', '==', firstName.trim()),
+    ];
+    if (barrioOrg) constraints2.splice(0, 0, where('barrioOrg', '==', barrioOrg));
+
+    const q1 = query(membersCollection, ...constraints1);
+    const q2 = query(membersCollection, ...constraints2);
 
     const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
 

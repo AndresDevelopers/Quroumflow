@@ -125,6 +125,7 @@ export async function createConvertRecords(
   photoURL: string | null,
   baptismPhotoURLs: string[],
   userId: string,
+  barrioOrg: string,
   memberId?: string
 ): Promise<string | null> {
   if (!formData.baptismDate) return null;
@@ -146,6 +147,7 @@ export async function createConvertRecords(
     observation: 'Registrado automáticamente desde Miembros',
     createdAt: Timestamp.now(),
     createdBy: userId,
+    barrioOrg,
     memberId: memberId || '',
   };
 
@@ -159,6 +161,7 @@ export async function createConvertRecords(
     date: Timestamp.fromDate(formData.baptismDate),
     source: 'Automático' as const,
     baptismPhotos: baptismPhotoURLs,
+    barrioOrg,
     createdAt: Timestamp.now(),
   };
 
@@ -179,12 +182,14 @@ export async function createConvertRecords(
 export async function cleanupBaptismRecords(
   memberName: string,
   baptismYearChanged: boolean,
-  baptismDateRemoved: boolean
+  baptismDateRemoved: boolean,
+  barrioOrg: string
 ): Promise<void> {
   if (!baptismYearChanged && !baptismDateRemoved) return;
 
   const baptismQuery = query(
     collection(firestore, 'c_bautismos'),
+    where('barrioOrg', '==', barrioOrg),
     where('name', '==', memberName),
     where('source', '==', 'Automático')
   );
@@ -203,14 +208,15 @@ export async function cleanupBaptismRecords(
 export async function syncMinisteringIfChanged(
   member: Member,
   previousTeachers: string[],
-  currentTeachers: string[]
+  currentTeachers: string[],
+  barrioOrg: string
 ): Promise<void> {
   if (JSON.stringify(previousTeachers.sort()) === JSON.stringify(currentTeachers.sort())) {
     return; // No hay cambios
   }
 
   try {
-    await syncMinisteringAssignments(member, previousTeachers);
+    await syncMinisteringAssignments(member, previousTeachers, barrioOrg);
     console.log('✅ Ministering assignments synced');
   } catch (error) {
     console.error('⚠️ Error syncing ministering assignments:', error);

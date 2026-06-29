@@ -214,7 +214,7 @@ async function getConvertsWithInfo(): Promise<ConvertWithInfo[]> {
 }
 
 export default function ConvertsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
   const [converts, setConverts] = useState<ConvertWithInfo[]>([]);
@@ -319,7 +319,8 @@ export default function ConvertsPage() {
       if (member) {
         await syncMinisteringAssignments(
           { ...member, ministeringTeachers: teachers },
-          previousTeachers
+          previousTeachers,
+          barrioOrg
         );
       }
 

@@ -6,6 +6,7 @@ import {
   getDocs,
   orderBy,
   query,
+  where,
   Timestamp,
   updateDoc,
 } from 'firebase/firestore';
@@ -27,6 +28,7 @@ export type HealthConcernInput = {
   address: string;
   observation: string;
   createdBy: string;
+  barrioOrg: string;
   photoFile?: File | null;
 };
 
@@ -56,8 +58,8 @@ const uploadPhoto = async (file: File, userId: string): Promise<UploadResult> =>
   return { photoURL, photoPath: storagePath };
 };
 
-export const fetchHealthConcerns = async (): Promise<HealthConcern[]> => {
-  const q = query(healthConcernsCollection, orderBy('createdAt', 'desc'));
+export const fetchHealthConcerns = async (barrioOrg: string): Promise<HealthConcern[]> => {
+  const q = query(healthConcernsCollection, where('barrioOrg', '==', barrioOrg), orderBy('createdAt', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as HealthConcern));
 };
@@ -80,6 +82,7 @@ export const createHealthConcern = async (
     address: input.address,
     observation: input.observation,
     createdBy: input.createdBy,
+    barrioOrg: input.barrioOrg,
     createdAt: now,
     updatedAt: now,
   };

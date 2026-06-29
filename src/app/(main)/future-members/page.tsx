@@ -33,7 +33,7 @@ import { getFutureMembers } from '@/lib/dashboard-data';
 import { buildMemberEditUrl } from '@/lib/navigation';
 
 export default function FutureMembersPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const [futureMembers, setFutureMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const { t } = useI18n();
@@ -41,13 +41,13 @@ export default function FutureMembersPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getFutureMembers();
+      const data = await getFutureMembers(barrioOrg);
       setFutureMembers(data);
     } catch (error) {
       console.error("Failed to fetch future members:", error);
     }
     setLoading(false);
-  }, []);
+  }, [barrioOrg]);
 
   useEffect(() => {
     if (authLoading || !user) return;

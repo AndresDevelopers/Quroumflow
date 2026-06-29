@@ -23,7 +23,7 @@ import type { BirthdaysOverview } from "@/lib/birthdays-utils";
 import { getBirthdaysOverview } from "@/lib/birthdays-utils";
 
 export function BirthdaysDashboardCard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const { language, t } = useI18n();
   const { toast } = useToast();
 
@@ -38,7 +38,7 @@ export function BirthdaysDashboardCard() {
     async function load() {
       setLoading(true);
       try {
-        const birthdays = await fetchBirthdays();
+        const birthdays = await fetchBirthdays(barrioOrg);
         const nextOverview = getBirthdaysOverview(birthdays);
         if (isMounted) setOverview(nextOverview);
       } catch (error) {

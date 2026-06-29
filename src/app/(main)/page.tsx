@@ -147,7 +147,7 @@ function filterDeceasedMembers(members: Member[]): Member[] {
 
 function DashboardPage() {
   const { language, t } = useI18n();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -165,33 +165,33 @@ function DashboardPage() {
 
     async function loadData() {
       setLoading(true);
-      const dashboardData = await getDashboardData();
+      const dashboardData = await getDashboardData(barrioOrg);
       setData(dashboardData);
       setLoading(false);
     }
     loadData();
-  }, [authLoading, user]);
+  }, [authLoading, user, barrioOrg]);
 
   useEffect(() => {
     if (authLoading || !user) return; // Wait for authentication
 
     async function loadActivityOverview() {
         setLoadingActivities(true);
-        const summary = await getActivityOverviewData();
+        const summary = await getActivityOverviewData(barrioOrg);
         setActivityOverview(summary);
         setLoadingActivities(false);
     }
     queueMicrotask(() => {
       void loadActivityOverview();
     });
-  }, [authLoading, user])
+  }, [authLoading, user, barrioOrg])
 
   useEffect(() => {
     if (authLoading || !user) return; // Wait for authentication
 
     async function loadMembersData() {
         setLoadingMembers(true);
-        const data = await getMembersByStatus();
+        const data = await getMembersByStatus(barrioOrg);
         setMembersData(data);
         setLoadingMembers(false);
     }
@@ -205,7 +205,7 @@ function DashboardPage() {
 
     async function loadDeceasedMembers() {
         setLoadingDeceased(true);
-        const data = await getDeceasedMembers();
+        const data = await getDeceasedMembers(barrioOrg);
         setDeceasedMembers(data);
         setLoadingDeceased(false);
     }
@@ -294,7 +294,7 @@ function DashboardPage() {
       });
 
       // Reload deceased members
-      const data = await getDeceasedMembers();
+      const data = await getDeceasedMembers(barrioOrg);
       setDeceasedMembers(data);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

@@ -81,7 +81,7 @@ export async function migrateExistingMinisteringAssignments(
           console.log(`   Teachers: ${member.ministeringTeachers?.join(', ')}`);
           
           if (!dryRun) {
-            await syncMinisteringAssignments(member, []);
+            await syncMinisteringAssignments(member, [], 'Libertad|Quórum de Élderes');
           }
           
           return member;

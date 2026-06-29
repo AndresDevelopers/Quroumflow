@@ -112,7 +112,7 @@ interface MemberFormProps {
 }
 
 export function MemberForm({ member, onClose }: MemberFormProps) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const { toast } = useToast();
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
@@ -813,7 +813,8 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
           try {
             await syncMinisteringAssignments(
               { ...member, ...memberData, id: member.id } as any,
-              previousTeachers
+              previousTeachers,
+              barrioOrg
             );
             console.log('✅ Ministering assignments synced');
           } catch (error) {
@@ -872,7 +873,7 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
           newMember.photoURL = photoURL;
         }
 
-        const newMemberId = await createMember(newMember as any);
+        const newMemberId = await createMember(newMember as any, barrioOrg);
 
         // Actualizar el registro de converso con el memberId si existe
         if (convertDocRef && updateDocDynamic) {
@@ -885,7 +886,8 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
           try {
             await syncMinisteringAssignments(
               { ...newMember, id: newMemberId } as any,
-              []
+              [],
+              barrioOrg
             );
             console.log('✅ Ministering assignments synced for new member');
           } catch (error) {

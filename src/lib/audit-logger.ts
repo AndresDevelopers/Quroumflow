@@ -20,7 +20,7 @@ export interface AuditEntry {
 }
 
 export async function logAdminAction(
-  entry: Omit<AuditEntry, "createdAt">
+  entry: Omit<AuditEntry, "createdAt"> & { barrioOrg?: string }
 ): Promise<void> {
   try {
     await addDoc(adminAuditCollection, {

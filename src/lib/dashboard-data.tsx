@@ -15,11 +15,11 @@ import { buildActivityOverview } from '@/lib/activity-overview';
 import { subMonths, addDays, format, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export async function getFutureMembers(): Promise<Member[]> {
+export async function getFutureMembers(barrioOrg: string): Promise<Member[]> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const snapshot = await getDocs(membersCollection);
+  const snapshot = await getDocs(query(membersCollection, where('barrioOrg', '==', barrioOrg)));
 
   const futureMembers = snapshot.docs
     .map(doc => {
@@ -44,13 +44,13 @@ export async function getFutureMembers(): Promise<Member[]> {
   return futureMembers;
 }
 
-export async function getDashboardData() {
+export async function getDashboardData(barrioOrg: string) {
   // 1. Conversos Totales (últimos 24 meses, igual que la página de conversos)
   const twentyFourMonthsAgo = subMonths(new Date(), 24);
   const twentyFourMonthsAgoTimestamp = Timestamp.fromDate(twentyFourMonthsAgo);
 
   // Conversos de la colección
-  const convertsSnapshot = await getDocs(query(convertsCollection, orderBy('baptismDate', 'desc')));
+  const convertsSnapshot = await getDocs(query(convertsCollection, where('barrioOrg', '==', barrioOrg), orderBy('baptismDate', 'desc')));
   const convertsFromCollection = convertsSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Convert))
     .filter(convert => 
@@ -60,7 +60,7 @@ export async function getDashboardData() {
     );
 
   // Miembros bautizados hace menos de 24 meses
-  const membersSnapshot = await getDocs(query(membersCollection, orderBy('baptismDate', 'desc')));
+  const membersSnapshot = await getDocs(query(membersCollection, where('barrioOrg', '==', barrioOrg), orderBy('baptismDate', 'desc')));
   const membersAsConverts = membersSnapshot.docs
     .map(doc => {
       const memberData = doc.data();
@@ -98,25 +98,25 @@ export async function getDashboardData() {
   const convertsCount = uniqueConverts.length;
 
   // 2. Future Members Count
-  const futureMembers = await getFutureMembers();
+  const futureMembers = await getFutureMembers(barrioOrg);
   const futureMembersCount = futureMembers.length;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const ministeringSnapshot = await getDocs(ministeringCollection);
+  const ministeringSnapshot = await getDocs(query(ministeringCollection, where('barrioOrg', '==', barrioOrg)));
   const companionships = ministeringSnapshot.docs.map(doc => doc.data() as Companionship);
 
   // 4. Council Actions Count - Based on active items in Council page
 
   // a. Unresolved annotations for council
   const councilAnnotationsSnapshot = await getDocs(
-    query(annotationsCollection, where('isResolved', '==', false))
+    query(annotationsCollection, where('barrioOrg', '==', barrioOrg), where('isResolved', '==', false))
   );
   const councilAnnotationsCount = councilAnnotationsSnapshot.size;
 
   // b. Services not notified to council
   const servicesSnapshot = await getDocs(
-    query(servicesCollection, where('date', '>=', Timestamp.fromDate(today)))
+    query(servicesCollection, where('barrioOrg', '==', barrioOrg), where('date', '>=', Timestamp.fromDate(today)))
   );
   const services = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
   const servicesNotNotifiedCount = services.filter(service =>
@@ -124,7 +124,7 @@ export async function getDashboardData() {
   ).length;
 
   // c. Converts needing council follow-up (within 18 months, not completed)
-  const councilConvertsSnapshot = await getDocs(query(convertsCollection, where('councilCompleted', '==', false)));
+  const councilConvertsSnapshot = await getDocs(query(convertsCollection, where('barrioOrg', '==', barrioOrg), where('councilCompleted', '==', false)));
   const pendingCouncilConverts = councilConvertsSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Convert))
   .filter(c => c.baptismDate && c.baptismDate.toDate() > twentyFourMonthsAgo).length;
@@ -134,6 +134,7 @@ export async function getDashboardData() {
   const upcomingBaptismsSnapshot = await getDocs(
     query(
       futureMembersCollection,
+      where('barrioOrg', '==', barrioOrg),
       where('baptismDate', '>=', Timestamp.fromDate(today)),
       where('baptismDate', '<=', Timestamp.fromDate(sevenDaysFromNow))
     )
@@ -142,7 +143,7 @@ export async function getDashboardData() {
 
   // e. Upcoming activities (next 14 days)
   const fourteenDaysFromNow = addDays(today, 14);
-  const activitiesSnapshot = await getDocs(query(activitiesCollection, orderBy('date', 'desc')));
+  const activitiesSnapshot = await getDocs(query(activitiesCollection, where('barrioOrg', '==', barrioOrg), orderBy('date', 'desc')));
   const upcomingActivitiesCount = activitiesSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
     .filter(activity => {
@@ -155,7 +156,7 @@ export async function getDashboardData() {
 
   // g. Less active members needing council follow-up
   const lessActiveMembersSnapshot = await getDocs(
-    query(membersCollection, where('status', '==', 'less_active'))
+    query(membersCollection, where('barrioOrg', '==', barrioOrg), where('status', '==', 'less_active'))
   );
   const lessActiveMembers = lessActiveMembersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Member));
   const lessActiveMembersNeedingCouncilCount = lessActiveMembers.filter(member =>
@@ -173,8 +174,8 @@ export async function getDashboardData() {
   };
 }
 
-export async function getMembersByStatus() {
-  const membersSnapshot = await getDocs(membersCollection);
+export async function getMembersByStatus(barrioOrg: string) {
+  const membersSnapshot = await getDocs(query(membersCollection, where('barrioOrg', '==', barrioOrg)));
   const members = membersSnapshot.docs
     .map(doc => {
       const memberData = doc.data() as Record<string, any>;
@@ -198,8 +199,8 @@ export async function getMembersByStatus() {
   };
 }
 
-export async function getActivityOverviewData() {
-  const activitiesSnapshot = await getDocs(query(activitiesCollection, orderBy('date', 'asc')));
+export async function getActivityOverviewData(barrioOrg: string) {
+  const activitiesSnapshot = await getDocs(query(activitiesCollection, where('barrioOrg', '==', barrioOrg), orderBy('date', 'asc')));
   const activities = activitiesSnapshot.docs.map((doc) => {
     const activity = doc.data() as Activity;
 
@@ -213,8 +214,8 @@ export async function getActivityOverviewData() {
 }
 
 
-export async function getActivityChartData() {
-  const activitiesSnapshot = await getDocs(query(activitiesCollection, orderBy('date', 'asc')));
+export async function getActivityChartData(barrioOrg: string) {
+  const activitiesSnapshot = await getDocs(query(activitiesCollection, where('barrioOrg', '==', barrioOrg), orderBy('date', 'asc')));
   const activities = activitiesSnapshot.docs.map(doc => doc.data() as Activity);
 
   const monthlyTotals: { [key: string]: number } = {

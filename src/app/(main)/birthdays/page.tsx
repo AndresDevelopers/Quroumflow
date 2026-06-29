@@ -76,7 +76,7 @@ function getUpcomingBirthdays(birthdays: Birthday[]): BirthdayWithNext[] {
 }
 
 export default function BirthdaysPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, barrioOrg } = useAuth();
   const [birthdays, setBirthdays] = useState<BirthdayWithNext[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +85,7 @@ export default function BirthdaysPage() {
 
   const fetchBirthdays = useCallback(() => {
     setLoading(true);
-    fetchBirthdaysData()
+    fetchBirthdaysData(barrioOrg)
       .then(data => {
         setBirthdays(getUpcomingBirthdays(data));
       })
@@ -94,7 +94,7 @@ export default function BirthdaysPage() {
         toast({ title: t('birthdays.error'), description: t('birthdays.loadError'), variant: 'destructive' });
       })
       .finally(() => setLoading(false));
-  }, [toast, t]);
+  }, [toast, t, barrioOrg]);
 
   useEffect(() => {
     if (authLoading || !user) return;

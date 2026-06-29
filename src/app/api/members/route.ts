@@ -201,7 +201,7 @@ export async function POST(request: Request) {
       memberData.inactiveSince = Timestamp.now();
     }
 
-    const memberId = await createMember(memberData);
+    const memberId = await createMember(memberData, 'Libertad|Quórum de Élderes');
 
     // Always invalidate cache when creating/updating members
     revalidateTag('members', 'default');
