@@ -2,15 +2,6 @@
 
 import { useEffect } from 'react'
 
-// Dynamically import Sentry only if available
-let Sentry: any = null;
-if (typeof window !== 'undefined') {
-  try {
-    Sentry = require('@sentry/nextjs');
-  } catch (error) {
-    // Sentry is optional
-  }
-}
 
 // Fallback translations for global error (when i18n context might not be available)
 const translations = {
@@ -50,18 +41,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const t = translations[lang]
 
   useEffect(() => {
-    if (Sentry?.captureException) {
-      Sentry.captureException(error, {
-        tags: {
-          component: 'GlobalError',
-          errorBoundary: true
-        },
-        extra: {
-          digest: error.digest,
-          timestamp: new Date().toISOString()
-        }
-      })
-    }
+    console.error('GlobalError:', error.message, error.digest)
   }, [error])
 
   const handleGoHome = () => {

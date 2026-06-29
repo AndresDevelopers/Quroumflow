@@ -1,1 +1,1 @@
-!function(){try{var e="u">typeof window?window:"u">typeof global?global:"u">typeof globalThis?globalThis:"u">typeof self?self:{},s=(new e.Error).stack;s&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[s]="d2965488-03dc-43bf-a9c4-31c531d8c8e5",e._sentryDebugIdIdentifier="sentry-dbid-d2965488-03dc-43bf-a9c4-31c531d8c8e5")}catch(e){}}(),importScripts("/firebase-messaging-sw.js");
+importScripts("/firebase-messaging-sw.js");

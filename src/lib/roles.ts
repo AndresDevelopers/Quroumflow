@@ -56,3 +56,6 @@ export const hasLeadershipPrivileges = (role: UserRole): boolean =>
 
 export const canViewSettings = (role: UserRole): boolean =>
   hasLeadershipPrivileges(role);
+
+export const isAdmin = (role: UserRole | null | undefined): boolean =>
+  role === settingsAdminRole;

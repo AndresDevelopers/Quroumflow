@@ -45,6 +45,8 @@ import { InstallPrompt } from "@/components/install-prompt";
 import { navigationItems } from "@/lib/navigation";
 import { usersCollection } from "@/lib/collections";
 import { doc, getDoc } from "firebase/firestore";
+import { Shield } from "lucide-react";
+import { isAdmin, normalizeRole } from "@/lib/roles";
 
 function Logo() {
   const { mainPage } = useAuth();
@@ -163,6 +165,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
   const { user, userRole } = useAuth();
   const [version, setVersion] = useState("");
   const [visibleNavItems, setVisibleNavItems] = useState(navigationItems);
+  const showAdminLink = isAdmin(userRole);
 
   useEffect(() => {
     fetch("/changelog.json")
@@ -269,6 +272,21 @@ export function MainLayout({ children }: { children: ReactNode }) {
             </div>
           </ChangelogDialog>
           <SidebarMenu>
+            {showAdminLink && (
+              <SidebarMenuItem>
+                <Link href="/admin" onClick={handleLinkClick}>
+                  <SidebarMenuButton
+                    isActive={pathname.startsWith("/admin")}
+                    tooltip={{ children: "Administración" }}
+                  >
+                    <Shield className="h-5 w-5" />
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      Administración
+                    </span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <Link href="/settings" onClick={handleLinkClick}>
                 <SidebarMenuButton

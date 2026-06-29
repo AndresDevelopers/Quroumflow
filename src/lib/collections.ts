@@ -30,4 +30,5 @@ export const usersCollection = coll('c_users');
 export const notificationsCollection = coll('c_notifications');
 export const healthConcernsCollection = coll('c_observaciones_salud');
 export const membersCollection = coll('c_miembros');
+export const adminAuditCollection = coll('c_admin_audit');
 // Add other collections here

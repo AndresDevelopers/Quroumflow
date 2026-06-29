@@ -37,16 +37,6 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo
     });
 
-    // Report to Sentry if available
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, {
-        contexts: {
-          react: {
-            componentStack: errorInfo.componentStack
-          }
-        }
-      });
-    }
   }
 
   handleRetry = () => {
@@ -123,15 +113,5 @@ export function useErrorHandler() {
   return (error: Error, errorInfo?: ErrorInfo) => {
     console.error('Error caught by useErrorHandler:', error, errorInfo);
     
-    // Report to Sentry if available
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, {
-        contexts: errorInfo ? {
-          react: {
-            componentStack: errorInfo.componentStack
-          }
-        } : undefined
-      });
-    }
   };
 }

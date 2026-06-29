@@ -74,10 +74,6 @@ const createLogger = (): Logger => {
       console[level](message);
     }
 
-    // In production, also send errors to monitoring service (Sentry is already configured)
-    if (level === 'error' && isProduction && typeof data === 'object' && data.error) {
-      // Sentry will automatically capture console.error calls
-    }
   };
 
   return {

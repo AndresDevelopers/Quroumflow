@@ -2,19 +2,6 @@
 import type {NextConfig} from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 
-// Only import and use Sentry if enabled
-let withSentryConfig: any = null;
-const isSentryEnabled = process.env.SENTRY_ENABLED !== 'false';
-
-if (isSentryEnabled) {
-  try {
-    const sentryModule = require('@sentry/nextjs');
-    withSentryConfig = sentryModule.withSentryConfig;
-  } catch (error) {
-    console.warn('⚠️ Sentry module not found. Building without Sentry integration.', error);
-  }
-}
-
 const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test',
@@ -78,63 +65,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Sentry configuration - only used if Sentry is enabled and available
-const sentryBuildOptions = {
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-webpack-plugin#options
-
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // Bundle size optimizations - reduces Sentry impact by ~5KB gzipped
-  bundleSizeOptimizations: {
-    excludeDebugStatements: true,
-    excludeReplayIframe: true,
-    excludeReplayShadowDom: true,
-  },
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: "/monitoring",
-
-  // Conditionally hide source maps only in production
-  hideSourceMaps: process.env.NODE_ENV === 'production',
-
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
-    automaticVercelMonitors: true,
-  },
-
-  // transpileClientSDK was removed in Sentry 8.x - the SDK now handles compatibility automatically
-  // Reference: https://docs.sentry.io/platforms/javascript/guides/nextjs/migration/
-};
-
-// Check if Sentry is both enabled and properly configured
-const isSentryConfigured = isSentryEnabled &&
-  withSentryConfig &&
-  process.env.SENTRY_AUTH_TOKEN &&
-  process.env.SENTRY_ORG &&
-  process.env.SENTRY_PROJECT &&
-  process.env.SENTRY_ORG !== 'tu-org-slug' &&
-  process.env.SENTRY_PROJECT !== 'tu-project-slug' &&
-  !process.env.SENTRY_AUTH_TOKEN.startsWith('your-sentry-auth-token');
-
-const configWithSentry = isSentryConfigured
-  ? withSentryConfig(nextConfig, sentryBuildOptions)
-  : nextConfig;
-
-export default withPWA(configWithSentry);
+export default withPWA(nextConfig);

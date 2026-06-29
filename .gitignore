@@ -9,8 +9,8 @@ out/
 
 # Environment variables
 .env
-.env.local
-.env.production.local
+.env.*.local
+env.local
 
 # Firebase
 firebase-debug.log
@@ -28,9 +28,14 @@ build/
 .cursor/
 .claude/
 
-# AI Assistant
+# AI Assistants
+.agent/
+.augment/
+.commandcode/
 .kiro/
 .kilocode/
+.trae/
+.windsurf/
 
 # OS
 .DS_Store
@@ -46,11 +51,20 @@ yarn-error.log*
 *.tsbuildinfo
 
 #Ignore vscode AI rules
-.github\instructions\codacy.instructions.md
+.github/instructions/codacy.instructions.md
 
-#Map
-sw.js.map
-workbox-3c9d0171.js.map
+# ESLint reports
+eslint-report.json
+src-eslint-report.json
 
-#Ignore windsurf AI rules
+# Service Worker (build artifacts)
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/worker-*.js
+public/worker-*.js.map
+
+# Misc
 .windsurfrules
+opencode.json
