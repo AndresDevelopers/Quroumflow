@@ -64,6 +64,7 @@ const memberFormSchema = z.object({
   firstName: z.string().min(1, 'El nombre es requerido'),
   lastName: z.string().min(1, 'El apellido es requerido'),
   phoneNumber: z.string().optional(),
+  email: z.string().email('Ingresa un correo electrónico válido').optional().or(z.literal('')),
   memberId: z.string().optional(),
   address: z.string().optional(),
   birthDate: z.date().optional(),
@@ -141,6 +142,7 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
       firstName: '',
       lastName: '',
       phoneNumber: '',
+      email: '',
       memberId: '',
       status: 'active',
       photoURL: undefined,
@@ -694,6 +696,7 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
         status: values.status,
         // Manejar campos opcionales: usar el valor del formulario si está presente, sino undefined para limpiar
         phoneNumber: values.phoneNumber?.trim() ? values.phoneNumber.trim() : undefined,
+        email: values.email?.trim() ? values.email.trim() : undefined,
         memberId: values.memberId?.trim() ? values.memberId.trim() : undefined,
         address: values.address?.trim() ? values.address.trim() : '',
         birthDate: values.birthDate ? values.birthDate.toISOString() : undefined,
@@ -849,6 +852,7 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
           lastName: values.lastName.trim(),
           status: values.status,
           phoneNumber: values.phoneNumber?.trim() ? values.phoneNumber.trim() : undefined,
+          email: values.email?.trim() ? values.email.trim() : undefined,
           memberId: values.memberId?.trim() ? values.memberId.trim() : undefined,
           address: values.address?.trim() ? values.address.trim() : '',
           birthDate: values.birthDate
@@ -1122,6 +1126,28 @@ export function MemberForm({ member, onClose }: MemberFormProps) {
                 </FormControl>
                 <FormDescription>
                   Opcional. Incluye el código de país si es necesario.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Email */}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Correo Electrónico</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Ej: correo@ejemplo.com"
+                    type="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Opcional. Se usa para sincronización con la API externa de ministración.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

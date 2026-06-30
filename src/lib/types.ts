@@ -257,6 +257,7 @@ export type Member = {
     baptismPhotos?: string[]; // Fotos del bautismo
     deathDate?: Timestamp | null;
     phoneNumber?: string;
+    email?: string;
     memberId?: string;
     address?: string; // Dirección del miembro
     status: MemberStatus;

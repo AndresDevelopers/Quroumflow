@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getDocs, query, orderBy, where, collection, Timestamp } from 'firebase/firestore';
 import { unstable_cache, revalidateTag } from 'next/cache';
+import { firestoreAdmin } from '@/lib/firebase-admin';
 import { Member, MemberStatus } from '@/lib/types';
 import { createMember } from '@/lib/members-data';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const normalizeMemberStatus = (status?: unknown): MemberStatus => {
   if (typeof status !== 'string') return 'active';
@@ -60,40 +61,40 @@ function coerceToTimestamp(value: unknown): Timestamp | null | undefined {
   return undefined;
 }
 
-// Initialize Firebase directly in the API route
-async function initializeFirebaseForServer() {
-  const { initializeApp, getApps } = await import('firebase/app');
-  const { getFirestore } = await import('firebase/firestore');
-  const { firebaseConfig } = await import('@/firebaseConfig');
+async function fetchMembers(status?: MemberStatus): Promise<Member[]> {
+  const db = firestoreAdmin;
+  const membersCollection = db.collection('c_miembros');
 
-  const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-  return getFirestore(app);
+  let snapshot;
+  if (status) {
+    snapshot = await membersCollection
+      .where('status', '==', status)
+      .orderBy('lastName')
+      .get();
+  } else {
+    snapshot = await membersCollection
+      .orderBy('lastName')
+      .get();
+  }
+
+  const members: Member[] = [];
+  snapshot.forEach((doc: any) => {
+    const memberData = doc.data();
+    const processedMemberData = {
+      ...memberData,
+      status: deriveMemberStatus(memberData)
+    };
+    members.push({
+      id: doc.id,
+      ...processedMemberData
+    } as Member);
+  });
+
+  return members;
 }
 
 const getMembersCached = unstable_cache(
-  async (status?: MemberStatus) => {
-    const db = await initializeFirebaseForServer();
-    const membersCollection = collection(db, 'c_miembros');
-
-    const constraints = status ? [where('status', '==', status), orderBy('lastName')] : [orderBy('lastName')];
-    const q = query(membersCollection, ...constraints);
-    const querySnapshot = await getDocs(q);
-
-    const members: Member[] = [];
-    querySnapshot.forEach((doc: any) => {
-      const memberData = doc.data();
-      const processedMemberData = {
-        ...memberData,
-        status: deriveMemberStatus(memberData)
-      };
-      members.push({
-        id: doc.id,
-        ...processedMemberData
-      } as Member);
-    });
-
-    return members;
-  },
+  fetchMembers,
   ['members'],
   {
     revalidate: 3600, // 1 hour
@@ -108,33 +109,11 @@ export async function GET(request: Request) {
   try {
     // In development, always fetch fresh data without cache
     if (process.env.NODE_ENV !== 'production') {
-      const db = await initializeFirebaseForServer();
-      const membersCollection = collection(db, 'c_miembros');
-
-      const constraints = status ? [where('status', '==', status), orderBy('lastName')] : [orderBy('lastName')];
-
-      const q = query(membersCollection, ...constraints);
-      const querySnapshot = await getDocs(q);
-
-      const members: Member[] = [];
-      querySnapshot.forEach((doc) => {
-        const memberData = doc.data();
-        const processedMemberData = {
-          ...memberData,
-          status: deriveMemberStatus(memberData)
-        };
-        members.push({
-          id: doc.id,
-          ...processedMemberData
-        } as Member);
-      });
-
-      // Always set no-cache headers in development
+      const members = await fetchMembers(status || undefined);
       const response = NextResponse.json(members);
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       response.headers.set('Pragma', 'no-cache');
       response.headers.set('Expires', '0');
-
       return response;
     }
 

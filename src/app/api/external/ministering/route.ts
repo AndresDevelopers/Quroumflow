@@ -10,7 +10,12 @@ function getBearerToken(request: NextRequest): string | null {
   return authorization.slice('Bearer '.length).trim() || null;
 }
 
-async function resolveBarrioOrg(request: NextRequest): Promise<string | NextResponse> {
+interface ResolvedAuth {
+  barrioOrg: string;
+  userEmail: string | null;
+}
+
+async function resolveAuth(request: NextRequest): Promise<ResolvedAuth | NextResponse> {
   const token = getBearerToken(request);
   if (!token) {
     return NextResponse.json({ error: 'Missing bearer token' }, { status: 401 });
@@ -36,7 +41,9 @@ async function resolveBarrioOrg(request: NextRequest): Promise<string | NextResp
 
   const barrio = data.barrio || 'Libertad';
   const organizacion = data.organizacion || 'Quórum de Élderes';
-  return `${barrio}|${organizacion}`;
+  const userEmail = decoded.email || null;
+
+  return { barrioOrg: `${barrio}|${organizacion}`, userEmail };
 }
 
 async function initializeFirebaseForServer() {
@@ -66,8 +73,26 @@ function serializeDoc(docData: Record<string, unknown>): Record<string, unknown>
   return result;
 }
 
-async function fetchMinisteringData(barrioOrg: string) {
+async function fetchMinisteringData(barrioOrg: string, userEmail: string | null) {
   const db = await initializeFirebaseForServer();
+
+  // Build a set of member full names that match the user's email
+  let memberNames: Set<string> | null = null;
+  if (userEmail) {
+    const membersSnapshot = await getDocs(query(
+      collection(db, 'c_miembros'),
+      where('barrioOrg', '==', barrioOrg),
+      where('email', '==', userEmail)
+    ));
+    if (membersSnapshot.size > 0) {
+      memberNames = new Set<string>();
+      membersSnapshot.docs.forEach(doc => {
+        const m = doc.data();
+        const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim();
+        if (fullName) memberNames!.add(fullName);
+      });
+    }
+  }
 
   const [compSnapshot, distSnapshot] = await Promise.all([
     getDocs(query(
@@ -82,15 +107,36 @@ async function fetchMinisteringData(barrioOrg: string) {
     )),
   ]);
 
-  const companionships = compSnapshot.docs.map(doc => ({
+  let companionships = compSnapshot.docs.map(doc => ({
     id: doc.id,
     ...serializeDoc(doc.data()),
   }));
 
-  const districts = distSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...serializeDoc(doc.data()),
-  }));
+  // Filter by member email if applicable
+  if (memberNames && memberNames.size > 0) {
+    companionships = companionships.filter((comp: any) => {
+      // Check if user is a companion
+      const companions: string[] = comp.companions || [];
+      if (companions.some(name => memberNames!.has(name))) return true;
+
+      // Check if user is in a family
+      const families: any[] = comp.families || [];
+      return families.some((f: any) => memberNames!.has(f.name || ''));
+    });
+  }
+
+  const matchingCompIds = new Set(companionships.map(c => c.id));
+
+  const districts = distSnapshot.docs
+    .map(doc => ({
+      id: doc.id,
+      ...serializeDoc(doc.data()),
+    }))
+    .filter((dist: any) => {
+      if (!memberNames || memberNames.size === 0) return true;
+      const ids: string[] = dist.companionshipIds || [];
+      return ids.some((id: string) => matchingCompIds.has(id));
+    });
 
   return { companionships, districts };
 }
@@ -102,12 +148,14 @@ const getCachedMinisteringData = unstable_cache(
 );
 
 export async function GET(request: NextRequest) {
-  const barrioOrg = await resolveBarrioOrg(request);
-  if (barrioOrg instanceof NextResponse) return barrioOrg;
+  const resolved = await resolveAuth(request);
+  if (resolved instanceof NextResponse) return resolved;
+
+  const { barrioOrg, userEmail } = resolved;
 
   try {
     if (process.env.NODE_ENV !== 'production') {
-      const data = await fetchMinisteringData(barrioOrg);
+      const data = await fetchMinisteringData(barrioOrg, userEmail);
       const response = NextResponse.json(data);
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       response.headers.set('Pragma', 'no-cache');
@@ -115,7 +163,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    const data = await getCachedMinisteringData(barrioOrg);
+    const data = await getCachedMinisteringData(barrioOrg, userEmail);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in /api/external/ministering:', error);

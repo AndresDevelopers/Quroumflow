@@ -88,6 +88,10 @@ export async function createMember(memberData: Omit<Member, 'id'>, barrioOrg: st
       cleanData.memberId = memberData.memberId.trim();
     }
 
+    if (memberData.email?.trim()) {
+      cleanData.email = memberData.email.trim();
+    }
+
     if (memberData.address?.trim()) {
       cleanData.address = memberData.address.trim();
     }
@@ -206,6 +210,7 @@ export async function updateMember(
     // Manejar campos opcionales
     const optionalFields: Record<string, any> = {
       phoneNumber: memberData.phoneNumber,
+      email: memberData.email,
       memberId: memberData.memberId,
       address: memberData.address,
       photoURL: memberData.photoURL,
