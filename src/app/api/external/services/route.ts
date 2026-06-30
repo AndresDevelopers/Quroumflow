@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDocs, query, orderBy, where, collection, Timestamp } from 'firebase/firestore';
 import { unstable_cache } from 'next/cache';
 import { authAdmin, firestoreAdmin } from '@/lib/firebase-admin';
-import { normalizeRole } from '@/lib/roles';
 
 function getBearerToken(request: NextRequest): string | null {
   const authorization = request.headers.get('authorization');
@@ -29,31 +27,16 @@ async function resolveBarrioOrg(request: NextRequest): Promise<string | NextResp
   }
 
   const data = userDoc.data()!;
-  const role = normalizeRole(data.role);
-  if (!role || role === 'user') {
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-  }
-
   const barrio = data.barrio || 'Libertad';
   const organizacion = data.organizacion || 'Quórum de Élderes';
   return `${barrio}|${organizacion}`;
 }
 
-async function initializeFirebaseForServer() {
-  const { initializeApp, getApps } = await import('firebase/app');
-  const { getFirestore } = await import('firebase/firestore');
-  const { firebaseConfig } = await import('@/firebaseConfig');
-  const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-  return getFirestore(app);
-}
-
 function serializeDoc(docData: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(docData)) {
-    if (value instanceof Timestamp) {
-      result[key] = value.toDate().toISOString();
-    } else if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: () => unknown }).toDate === 'function') {
-      const date = (value as { toDate: () => Date }).toDate();
+    if (value && typeof value === 'object' && typeof (value as any).toDate === 'function') {
+      const date = (value as any).toDate();
       if (date instanceof Date && !isNaN(date.getTime())) {
         result[key] = date.toISOString();
       } else {
@@ -76,21 +59,21 @@ function getYearDateRange(yearStr: string): { start: Date; end: Date } | null {
 }
 
 async function fetchServicesData(barrioOrg: string, yearStr: string | null) {
-  const db = await initializeFirebaseForServer();
-  const constraints: any[] = [where('barrioOrg', '==', barrioOrg)];
+  let query = firestoreAdmin
+    .collection('c_servicios')
+    .where('barrioOrg', '==', barrioOrg);
 
   if (yearStr) {
     const range = getYearDateRange(yearStr);
     if (range) {
-      constraints.push(where('date', '>=', range.start));
-      constraints.push(where('date', '<=', range.end));
+      query = query.where('date', '>=', range.start).where('date', '<=', range.end);
     }
   }
 
-  constraints.push(orderBy('date', 'desc'));
+  query = query.orderBy('date', 'desc');
 
-  const snapshot = await getDocs(query(collection(db, 'c_servicios'), ...constraints));
-  return snapshot.docs.map(doc => ({
+  const snapshot = await query.get();
+  return snapshot.docs.map((doc: any) => ({
     id: doc.id,
     ...serializeDoc(doc.data()),
   }));
