@@ -56,24 +56,50 @@ function serializeDoc(docData: Record<string, unknown>): Record<string, unknown>
   return result;
 }
 
-async function fetchMinisteringData(barrioOrg: string, userEmail: string | null) {
-  // Build a set of member full names that match the user's email
-  let memberNames: Set<string> | null = null;
-  if (userEmail) {
-    const membersSnapshot = await firestoreAdmin
-      .collection('c_miembros')
-      .where('barrioOrg', '==', barrioOrg)
-      .where('email', '==', userEmail)
-      .get();
-    if (!membersSnapshot.empty) {
-      memberNames = new Set<string>();
-      membersSnapshot.docs.forEach(doc => {
-        const m = doc.data();
-        const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim();
-        if (fullName) memberNames!.add(fullName);
-      });
+async function resolveMemberNames(barrioOrg: string, email: string | null, memberId: string | null, cedula: string | null): Promise<Set<string> | null> {
+  if (!email && !memberId && !cedula) return null;
+
+  const memberNames = new Set<string>();
+  const collection = firestoreAdmin.collection('c_miembros');
+
+  if (memberId) {
+    const doc = await collection.doc(memberId).get();
+    if (doc.exists) {
+      const m = doc.data()!;
+      const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim();
+      if (fullName) memberNames.add(fullName);
     }
   }
+
+  if (cedula) {
+    const snapshot = await collection
+      .where('barrioOrg', '==', barrioOrg)
+      .where('memberId', '==', cedula)
+      .get();
+    snapshot.docs.forEach(doc => {
+      const m = doc.data();
+      const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim();
+      if (fullName) memberNames.add(fullName);
+    });
+  }
+
+  if (email) {
+    const snapshot = await collection
+      .where('barrioOrg', '==', barrioOrg)
+      .where('email', '==', email)
+      .get();
+    snapshot.docs.forEach(doc => {
+      const m = doc.data();
+      const fullName = `${m.firstName || ''} ${m.lastName || ''}`.trim();
+      if (fullName) memberNames.add(fullName);
+    });
+  }
+
+  return memberNames.size > 0 ? memberNames : null;
+}
+
+async function fetchMinisteringData(barrioOrg: string, email: string | null, memberId: string | null, cedula: string | null) {
+  const memberNames = await resolveMemberNames(barrioOrg, email, memberId, cedula);
 
   const [compSnapshot, distSnapshot] = await Promise.all([
     firestoreAdmin
@@ -132,9 +158,15 @@ export async function GET(request: NextRequest) {
 
   const { barrioOrg, userEmail } = resolved;
 
+  // Allow filtering by specific member via email, ID, or cedula query params
+  const { searchParams } = new URL(request.url);
+  const memberEmail = searchParams.get('email') || userEmail || null;
+  const memberId = searchParams.get('memberId') || null;
+  const cedula = searchParams.get('cedula') || null;
+
   try {
     if (process.env.NODE_ENV !== 'production') {
-      const data = await fetchMinisteringData(barrioOrg, userEmail);
+      const data = await fetchMinisteringData(barrioOrg, memberEmail, memberId, cedula);
       const response = NextResponse.json(data);
       response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
       response.headers.set('Pragma', 'no-cache');
@@ -142,7 +174,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    const data = await getCachedMinisteringData(barrioOrg, userEmail);
+    const data = await getCachedMinisteringData(barrioOrg, memberEmail, memberId, cedula);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error in /api/external/ministering:', error);
