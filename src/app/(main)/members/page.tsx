@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Plus, Search, Filter, Edit, Trash2, Users, UserCheck, UserX, Eye, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, Users, UserCheck, UserX, Eye, ChevronUp, AlertTriangle, IdCard } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -112,6 +112,7 @@ export default function MembersPage() {
   const [urgentMember, setUrgentMember] = useState<Member | null>(null);
   const [urgentReason, setUrgentReason] = useState('');
   const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [noCedulaDialogOpen, setNoCedulaDialogOpen] = useState(false);
 
 
 
@@ -273,8 +274,11 @@ export default function MembersPage() {
     less_active: members.filter(m => m.status === 'less_active').length,
     inactive: members.filter(m => m.status === 'inactive').length,
     urgent: members.filter(m => m.isUrgent).length,
+    withoutCedula: members.filter(m => !m.memberId || m.memberId.trim() === '').length,
     total: members.length
   };
+
+  const membersWithoutCedula = members.filter(m => !m.memberId || m.memberId.trim() === '');
 
   return (
     <section className="page-section">
@@ -322,7 +326,10 @@ export default function MembersPage() {
 
 
       {/* Stats Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+
+
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total</CardTitle>
@@ -371,6 +378,16 @@ export default function MembersPage() {
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{memberCounts.urgent}</div>
             <p className="text-xs text-muted-foreground">miembros marcados urgentes</p>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setNoCedulaDialogOpen(true)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sin Cédula</CardTitle>
+            <IdCard className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{memberCounts.withoutCedula}</div>
+            <p className="text-xs text-muted-foreground">miembros sin cédula de miembro</p>
           </CardContent>
         </Card>
       </div>
@@ -807,6 +824,77 @@ export default function MembersPage() {
           <ChevronUp className="h-4 w-4" />
         </Button>
       )}
+
+      {/* No Cedula Dialog */}
+      <Dialog open={noCedulaDialogOpen} onOpenChange={setNoCedulaDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IdCard className="h-5 w-5 text-purple-600" />
+              Miembros sin Cédula
+            </DialogTitle>
+            <DialogDescription>
+              Los siguientes miembros aún no tienen registrada su cédula de miembro.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : membersWithoutCedula.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">
+                Todos los miembros tienen su cédula registrada.
+              </p>
+            ) : (
+              membersWithoutCedula.map((member) => {
+                const statusInfo = statusConfig[member.status];
+                const StatusIcon = statusInfo.icon;
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => {
+                      setNoCedulaDialogOpen(false);
+                      handleEditMember(member);
+                    }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {member.photoURL ? (
+                        <Image
+                          src={member.photoURL}
+                          alt={`${member.firstName} ${member.lastName}`}
+                          width={32}
+                          height={32}
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {member.firstName} {member.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.phoneNumber || 'Sin teléfono'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={statusInfo.variant} className="gap-1 flex-shrink-0">
+                      <StatusIcon className="h-3 w-3" />
+                      {statusInfo.label}
+                    </Badge>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Urgent Reason Dialog */}
       <Dialog open={urgentDialogOpen} onOpenChange={(open) => {
